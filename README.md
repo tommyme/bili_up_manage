@@ -31,3 +31,9 @@
 > - 修bug
 > 
 > - 上线网页版（vite+vue3 or quasar）
+
+## 效果图
+
+![](pics/64C6DA7C-5B78-457B-801A-12274661E97E.png)
+
+![](pics/BA748592-15CD-48F5-8E64-984B514A91BF.png)
