@@ -1,0 +1,3 @@
+qrcode-terminal
+PyQt5
+bilibili_api
