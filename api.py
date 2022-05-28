@@ -3,27 +3,35 @@ from bilibili_api import video, Credential, user
 from pprint import pprint
 import requests as r
 import json
-from bili_user import Bilibili_user_basic
+from bili_user import Bilibili_user_basic, Up_manager
+import httpx
+"""
+THIS FILE IS DEPRECATED, AND MAY BE REMOVED IN FUTURE VERSION
+BECAUSE BILI_USER IS A BETTER SOLUTION
+THIS FILE IS CURRENTLY WORK FOR GUI.PY
+"""
 
 
-ybw = Bilibili_user_basic(uid=306062555)
+
+ybw = Bilibili_user_basic()
 u = ybw.get_user()
+manager = Up_manager(u)
 credential = u.credential
 uid = u.uid
 
-
+# over
 async def unfollow(sid):
     print('unfollow: ', sid)
     u.uid = sid
     await u.modify_relation(user.RelationType.UNSUBSCRIBE)
     u.uid = uid
 
-
+# over
 async def classify(uids, groupids):
     resp = await user.set_subscribe_group(uids, groupids, credential)
     print(resp)
 
-
+# over 这个函数是因为当时classify函数有时候有bug, aiohttp会报错,所以我就写了一个sync的函数
 def classify2(uids, groupids):
     if groupids == []:
         # 啥也没选
@@ -42,15 +50,15 @@ def classify2(uids, groupids):
     resp = json.loads(resp)
     return resp
 
-
+# over
 async def del_group(groupid):
     await user.delete_subscribe_group(groupid, credential)
 
-
+# over
 async def new_group(name):
     await user.create_subscribe_group(name, credential)
 
-
+# over
 def get_groups():
     url = "https://api.bilibili.com/x/relation/tags?jsonp=jsonp&callback=__jp3"
     cookies = credential.get_cookies()
@@ -60,19 +68,17 @@ def get_groups():
     resp = json.loads(resp)['data']
     return resp
 
-
+# over
+# get_followings = manager.get_followings
 async def get_followings():
-    followings = []
-    i = 1
-    while True:
-        info = await u.get_followings(i)
-        if info['list']:
-            i += 1
-            followings += info['list']
-        else:
-            break
-    return followings
+    await manager.get_followings()
+    return manager.followings_mini
 
+async def get_faces():
+    async with httpx.AsyncClient() as client:
+        res = await asyncio.gather(*[client.get(i['face']) for i in manager.followings_mini])
+    faces = {i['mid']: j.content for i,j in zip(manager.followings_mini, res)}
+    return faces
 
 if __name__ == '__main__':
     # respp = asyncio.get_event_loop().run_until_complete(unfollow(389170767))

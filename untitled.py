@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/Users/flag/repos/pytoys/apps/bilibili_up_manager/untitled.ui'
+# Form implementation generated from reading ui file 'untitled.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.6
 #
@@ -22,7 +22,7 @@ class Ui_Dialog(object):
         self.fl_info.setGeometry(QtCore.QRect(240, 20, 241, 121))
         self.fl_info.setObjectName("fl_info")
         self.btn_cls = QtWidgets.QPushButton(Dialog)
-        self.btn_cls.setGeometry(QtCore.QRect(400, 230, 81, 31))
+        self.btn_cls.setGeometry(QtCore.QRect(410, 230, 81, 31))
         self.btn_cls.setObjectName("btn_cls")
         self.fl_pic = QtWidgets.QLabel(Dialog)
         self.fl_pic.setGeometry(QtCore.QRect(410, 150, 71, 71))
@@ -34,23 +34,24 @@ class Ui_Dialog(object):
         self.gp_list.setGeometry(QtCore.QRect(240, 170, 161, 181))
         self.gp_list.setObjectName("gp_list")
         self.btn_del_gp = QtWidgets.QPushButton(Dialog)
-        self.btn_del_gp.setGeometry(QtCore.QRect(400, 260, 81, 31))
+        self.btn_del_gp.setGeometry(QtCore.QRect(410, 260, 81, 31))
         self.btn_del_gp.setObjectName("btn_del_gp")
         self.btn_add_gp = QtWidgets.QPushButton(Dialog)
-        self.btn_add_gp.setGeometry(QtCore.QRect(400, 320, 81, 31))
+        self.btn_add_gp.setGeometry(QtCore.QRect(410, 320, 81, 31))
         self.btn_add_gp.setObjectName("btn_add_gp")
         self.new_gp_name = QtWidgets.QLineEdit(Dialog)
-        self.new_gp_name.setGeometry(QtCore.QRect(400, 290, 81, 31))
+        self.new_gp_name.setGeometry(QtCore.QRect(410, 290, 81, 31))
         self.new_gp_name.setObjectName("new_gp_name")
         self.btn_unfl = QtWidgets.QPushButton(Dialog)
         self.btn_unfl.setGeometry(QtCore.QRect(240, 140, 81, 31))
         self.btn_unfl.setObjectName("btn_unfl")
-        self.btn_unfl_2 = QtWidgets.QPushButton(Dialog)
-        self.btn_unfl_2.setGeometry(QtCore.QRect(320, 140, 81, 31))
-        self.btn_unfl_2.setObjectName("btn_unfl_2")
         self.btn_homepage = QtWidgets.QPushButton(Dialog)
         self.btn_homepage.setGeometry(QtCore.QRect(20, 360, 461, 32))
         self.btn_homepage.setObjectName("btn_homepage")
+        self.label_loading = QtWidgets.QLabel(Dialog)
+        self.label_loading.setGeometry(QtCore.QRect(330, 150, 58, 16))
+        self.label_loading.setText("")
+        self.label_loading.setObjectName("label_loading")
 
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
@@ -63,5 +64,4 @@ class Ui_Dialog(object):
         self.btn_del_gp.setText(_translate("Dialog", "删除"))
         self.btn_add_gp.setText(_translate("Dialog", "新增"))
         self.btn_unfl.setText(_translate("Dialog", "取关"))
-        self.btn_unfl_2.setText(_translate("Dialog", "..."))
         self.btn_homepage.setText(_translate("Dialog", "go to homepage"))

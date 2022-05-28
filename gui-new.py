@@ -8,20 +8,21 @@ import asyncio
 import requests as r
 import webbrowser
 from typing import List
-
-
+import qasync
+import httpx
+import contextlib
 
 class MyWin(QWidget, Ui_Dialog):
-    def __init__(self, parent=None):
-        super(MyWin, self).__init__(parent)
+    def __init__(self, followings):
+        super(MyWin, self).__init__()
         self.setupUi(self)
         self.loop = asyncio.get_event_loop()
         self.curr_homepage = None
 
-        self.followings = []
+        self.followings = followings
         self.groups = []
         self.gp_dict = {}
-        self.fl_dict = {}
+        self.fl_dict = {i['uname']: i for i in self.followings}
         self.fl_selected = []
         self.gp_selected = []
 
@@ -31,8 +32,6 @@ class MyWin(QWidget, Ui_Dialog):
         self.gp_pick.insertItems(0, [i['name'] for i in self.groups])
         self.gp_pick.insertItem(0, "ALL")
         self.gp_pick.setCurrentIndex(0)
-
-        self.loop.run_until_complete(self._async_get_fl())
         self.load_fl_list("ALL")
         self.connect()
 
@@ -40,12 +39,19 @@ class MyWin(QWidget, Ui_Dialog):
         self.fl_list.currentItemChanged.connect(self.show_info)
         self.fl_pic.setScaledContents(True)
         self.gp_pick.currentTextChanged.connect(self.refresh_fl_list)
-        self.btn_unfl.clicked.connect(self.btn_unfollow)
-        self.btn_cls.clicked.connect(self.btn_classify)
-        self.btn_del_gp.clicked.connect(self.btn_delete_gp)
-        self.btn_add_gp.clicked.connect(self.btn_new_gp)
+        self.btn_unfl.clicked.connect(self._btn_unfollow)
+        self.btn_cls.clicked.connect(self._btn_classify)
+        self.btn_del_gp.clicked.connect(self._btn_delete_gp)
+        self.btn_add_gp.clicked.connect(self._btn_new_gp)
         self.btn_homepage.clicked.connect(self.goto_homepage)
+    
+    @contextlib.contextmanager
+    def loading(self):
+        self.label_loading.setText("loading...")
+        yield
+        self.label_loading.setText("")
 
+    @qasync.asyncSlot()
     async def _async_get_fl(self):
         """
         异步加载关注列表，并且建立dict
@@ -57,7 +63,8 @@ class MyWin(QWidget, Ui_Dialog):
     def goto_homepage(self):
         webbrowser.open(self.curr_homepage)
 
-    def show_info(self):
+    @qasync.asyncSlot()
+    async def show_info(self):
         """
         展示选择的up的信息，并且加载头像
         :return:
@@ -69,8 +76,10 @@ class MyWin(QWidget, Ui_Dialog):
         face = info['face']
         content = info['sign']
         self.fl_info.setText(content)
-        resp = r.get(face).content
-        img = QtGui.QImage.fromData(resp)
+        with self.loading():
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(face)
+        img = QtGui.QImage.fromData(resp._content)
         self.fl_pic.setPixmap(QtGui.QPixmap.fromImage(img))
 
         for i in range(len(self.groups)):
@@ -138,8 +147,7 @@ class MyWin(QWidget, Ui_Dialog):
 
     def get_fl_selected(self) -> List[str]:
         """
-        得到备选统计项的字段
-        :return: list[str]
+        得到选中的following up; set self.fl_selected
         """
         count = self.fl_list.count()
         cb_list = [self.fl_list.item(i) for i in range(count)]
@@ -152,8 +160,7 @@ class MyWin(QWidget, Ui_Dialog):
 
     def get_gp_selected(self) -> List[str]:
         """
-        得到备选统计项的字段
-        :return: list[str]
+        得到选中的group; set self.gp_selected
         """
         count = self.gp_list.count()
         cb_list = [self.gp_list.item(i) for i in range(count)]
@@ -164,11 +171,9 @@ class MyWin(QWidget, Ui_Dialog):
         print(selected)
         self.gp_selected = selected
 
-    def btn_unfollow(self):
-        self.get_fl_selected()
-        self.loop.run_until_complete(self._btn_unfollow())
-
+    @qasync.asyncSlot()
     async def _btn_unfollow(self):
+        self.get_fl_selected()
         for i in self.fl_selected:
             mid = self.fl_dict[i]['mid']
             await unfollow(mid)
@@ -176,33 +181,28 @@ class MyWin(QWidget, Ui_Dialog):
             self.fl_dict.pop(i)
         self.refresh_fl_list()
 
-    def btn_classify(self):
+    # def _btn_classify2(self):
+    #     uids = [self.fl_dict[i]['mid'] for i in self.fl_selected]
+    #     groupids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
+    #     classify2(uids, groupids)
+    #     for uname in self.fl_selected:
+    #         self.followings[list(self.fl_dict).index(uname)]['tag'] = groupids
+    #         self.fl_dict[uname]['tag'] = groupids
+    #     self.refresh_fl_list()
+
+    @qasync.asyncSlot()
+    async def _btn_classify(self):
         self.get_gp_selected()
         self.get_fl_selected()
-        self.loop.run_until_complete(self._btn_classify())
-        # self._btn_classify2()
-
-    def _btn_classify2(self):
-        uids = [self.fl_dict[i]['mid'] for i in self.fl_selected]
-        groupids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
-        classify2(uids, groupids)
-        for uname in self.fl_selected:
-            self.followings[list(self.fl_dict).index(uname)]['tag'] = groupids
-            self.fl_dict[uname]['tag'] = groupids
-        self.refresh_fl_list()
-
-
-    async def _btn_classify(self):
         uids = [self.fl_dict[i]['mid'] for i in self.fl_selected]
         groupids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
         await classify(uids, groupids)
         self.refresh_fl_list()
 
-    def btn_delete_gp(self):
-        self.get_gp_selected()
-        self.loop.run_until_complete(self._btn_delete_gp())
-
+    
+    @qasync.Slot()
     async def _btn_delete_gp(self):
+        self.get_gp_selected()
         gpids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
         for i in gpids:
             await del_group(i)
@@ -211,9 +211,7 @@ class MyWin(QWidget, Ui_Dialog):
             self.gp_dict.pop(i)
         self.refresh_gp_list()
 
-    def btn_new_gp(self):
-        self.loop.run_until_complete(self._btn_new_gp())
-
+    @qasync.asyncSlot()
     async def _btn_new_gp(self):
         name = self.new_gp_name.text()
         await new_group(name)
@@ -221,11 +219,18 @@ class MyWin(QWidget, Ui_Dialog):
         self.gp_dict = {i['name']: i for i in self.groups}
         self.refresh_gp_list()
 
+async def main(followings):
+    future = asyncio.Future()
+    app = QApplication.instance()
+    app.aboutToQuit.connect(future.cancel)
+    mainWindow = MyWin(followings)
+    # mainWindow.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+    mainWindow.show()
+    await future
 
 if __name__ == '__main__':
-    app = QApplication(["ybw"])
-    myWin = MyWin()
-    myWin.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-    myWin.show()
-    app.exec_()
-    # sys.exit(app.exec_())
+    try:
+        followings = asyncio.run(get_followings())
+        qasync.run(main(followings))
+    except asyncio.exceptions.CancelledError:
+        sys.exit(0)
