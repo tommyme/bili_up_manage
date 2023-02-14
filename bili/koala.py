@@ -1,7 +1,7 @@
 # 检查koala的动态并且获取最新视频 然后拿到置顶的评论
 import json
 from bilibili_api import user, sync, comment
-
+import os
 
 # 实例化
 u = user.User(489667127)

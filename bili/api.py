@@ -3,7 +3,7 @@ from bilibili_api import video, Credential, user
 from pprint import pprint
 import requests as r
 import json
-from bili_user import Bilibili_user_basic, Up_manager
+from bili.manager import Bilibili_user_basic, Up_manager
 import httpx
 """
 THIS FILE IS DEPRECATED, AND MAY BE REMOVED IN FUTURE VERSION
@@ -11,10 +11,8 @@ BECAUSE BILI_USER IS A BETTER SOLUTION
 THIS FILE IS CURRENTLY WORK FOR GUI.PY
 """
 
-
-
 ybw = Bilibili_user_basic()
-u = ybw.get_user()
+u = ybw.user
 manager = Up_manager(u)
 credential = u.credential
 uid = u.uid

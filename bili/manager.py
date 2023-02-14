@@ -7,12 +7,12 @@ import asyncio
 import requests as r
 import itertools
 import os
-from collections import defaultdict as ddict
-from tag import Addict
+from bili.tag import Addict
 import httpx
 import json
 from bilibili_api import video, Credential, user
-from utils import filter, load_pickle, dump_pickle, dict2dict, copyColInTable, table2dict
+from bili.enhanced_user import EnhancedUser
+from bili.utils import filter, load_pickle, dump_pickle, dict2dict, copyColInTable, table2dict
 import pandas as pd
 
 # bili-api doc at https://bili.moyu.moe/
@@ -31,7 +31,7 @@ class Bilibili_user_basic():
     """
     GET_LOGIN_URL = "https://passport.bilibili.com/qrcode/getLoginUrl"
     GET_LOGIN_INFO_URL = "https://passport.bilibili.com/qrcode/getLoginInfo"
-    GET_LOGIN_buvid3_URL = "https://api.bilibili.com/x/frontend/finger/spi"
+    GET_LOGIN_BUVID3_URL = "https://api.bilibili.com/x/frontend/finger/spi"
     SESSDATA, bili_jct, buvid3, uid, info_dict = None, None, None, None, None
     _user = None
 
@@ -89,7 +89,7 @@ class Bilibili_user_basic():
             return False
     
     def get_buvid3(self):
-        resp = self.session.get(self.GET_LOGIN_buvid3_URL, 
+        resp = self.session.get(self.GET_LOGIN_BUVID3_URL, 
             cookies={"SESSDATA": self.SESSDATA}
         ).json()
         self.buvid3 = resp["data"]["b_3"]
@@ -108,7 +108,7 @@ class Bilibili_user_basic():
     def user(self):
         if not self._user:
             credential = Credential(sessdata=self.SESSDATA, bili_jct=self.bili_jct, buvid3=self.buvid3)
-            self._user = user.User(uid=self.uid, credential=credential)
+            self._user = EnhancedUser(uid=self.uid, credential=credential)
         return self._user
 
 
@@ -116,14 +116,14 @@ class Up_manager():
     """
     用于管理tagging system和获取follow信息 目前还有一些取关和group管理的功能
     """
-    followings = None
+    followings = None       # the only useage is to generate followings_mini
     followings_mini = None
     groups = None
     PICKLE_ROOT = "./taging_sys"
     tables: dict[str, pd.DataFrame] = {}
 
     def __init__(self, user_module):
-        self.user_module: user.User = user_module
+        self.user_module: EnhancedUser = user_module
         self.num_fl = r.get(
             f"https://api.bilibili.com/x/relation/stat?vmid={user_module.uid}"
         ).json()['data']['following']
@@ -217,12 +217,13 @@ class TableManager():
         # mid in table `groups` will be like "t:12345678"
         self.groups.loc[:, "mid"] = self.groups['tagid'].apply(lambda x:f"t:{x}")
         self.groups.loc[:, 'lazy'] = True
+        self.groups.loc[:, "disabled"] = self.groups['count'] == 0
         # neg value indecates it's a group.
 
         self.followings_mini = pd.DataFrame(up_manager.followings_mini)
         colMap = {'uname': 'label'}
         copyColInTable(self.followings_mini, colMap)
-        self.followings_mini["avatar"] = self.followings_mini["face"].apply(urlConvert)
+        self.followings_mini["avatar"] = self.followings_mini["face"] #.apply(urlConvert)
         # url convert
 
     def _get_up_in_group(self, groupid):
@@ -249,8 +250,40 @@ class TableManager():
         res = res['list']['vlist'][:20]
         useful = ['comment', 'pic', 'title', 'created', 'length','bvid','play']
         table = pd.DataFrame(res)[useful]
-        table['pic'] = table['pic'].apply(urlConvert)
+        table['pic'] = table['pic'] #.apply(urlConvert)
         return table2dict(table)
+    
+    def pps_polymer_data(self, data, groupId=None):
+        table = pd.DataFrame(data)
+        prev_len = len(table.columns)
+        # table = table[table['type'] == 'DYNAMIC_TYPE_AV'] 通过指定请求时候的字段 已经实现该效果
+        table['face']          = table['modules'].apply(lambda x: x['module_author']['face']) #.apply(urlConvert)
+        table['mid']           = table['modules'].apply(lambda x: x['module_author']['mid'])
+        table['name']          = table['modules'].apply(lambda x: x['module_author']['name'])
+        table['pub_time']      = table['modules'].apply(lambda x: x['module_author']['pub_time'])
+        table['bvid']          = table['modules'].apply(lambda x: x['module_dynamic']['major']['archive']['bvid'])
+        table['desc']          = table['modules'].apply(lambda x: x['module_dynamic']['major']['archive']['desc'])
+        table['cover']         = table['modules'].apply(lambda x: x['module_dynamic']['major']['archive']['cover']) #.apply(urlConvert)
+        table['duration_text'] = table['modules'].apply(lambda x: x['module_dynamic']['major']['archive']['duration_text'])
+        table['title']         = table['modules'].apply(lambda x: x['module_dynamic']['major']['archive']['title'])
+        table = table[table.columns[prev_len:]]
+        if groupId is not None:
+            groupId = groupId.strip("t:")
+            ups_tb = self._get_up_in_group(groupId)
+            mids = ups_tb['mid'].to_list()
+            table = table[table['mid'].isin(mids)]
+        return table2dict(table)
+
+    def get_table_data(self, table: pd.DataFrame):
+        return table2dict(table)
+    
+    def get_mul_group_up(self):
+        table = self.followings_mini
+        def func(x):
+            if x is None:   return 0
+            else:           return len(x)
+        return table[table['tag'].apply(func) == 2]
+
 
 
 

@@ -1,3 +1,7 @@
-qrcode-terminal
-PyQt5
 bilibili_api
+sanic
+Sanic-Cors
+httpx
+requests
+qrcode_terminal
+pandas

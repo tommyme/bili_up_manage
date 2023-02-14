@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QListWidgetItem
-from untitled import Ui_Dialog
+from gui.untitled import Ui_Dialog
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 import sys
-from api import get_followings, get_groups, unfollow, del_group, new_group, classify, classify2
+from bili.api import get_followings, get_groups, unfollow, del_group, new_group, classify, classify2
 import asyncio
 import requests as r
 import webbrowser
@@ -12,11 +12,13 @@ import qasync
 import httpx
 import contextlib
 
+
+
 class MyWin(QWidget, Ui_Dialog):
     def __init__(self, followings):
         super(MyWin, self).__init__()
         self.setupUi(self)
-        self.loop = asyncio.get_event_loop()
+        # self.loop = asyncio.get_event_loop()
         self.curr_homepage = None
 
         self.followings = followings
@@ -35,15 +37,20 @@ class MyWin(QWidget, Ui_Dialog):
         self.load_fl_list("ALL")
         self.connect()
 
+    @qasync.asyncSlot()
+    async def reload_followings(self):
+        self.followings = await get_followings()
+        self.fl_dict = {i['uname']: i for i in self.followings}
+
     def connect(self):
         self.fl_list.currentItemChanged.connect(self.show_info)
         self.fl_pic.setScaledContents(True)
         self.gp_pick.currentTextChanged.connect(self.refresh_fl_list)
-        self.btn_unfl.clicked.connect(self._btn_unfollow)
-        self.btn_cls.clicked.connect(self._btn_classify)
+        self.btn_unfl.clicked.connect(self._btn_unfollow)   # need refresh
+        self.btn_cls.clicked.connect(self._btn_classify)    # need refresh
         self.btn_del_gp.clicked.connect(self._btn_delete_gp)
         self.btn_add_gp.clicked.connect(self._btn_new_gp)
-        self.btn_homepage.clicked.connect(self.goto_homepage)
+        self.btn_homepage.clicked.connect(lambda : webbrowser.open(self.curr_homepage))
     
     @contextlib.contextmanager
     def loading(self):
@@ -59,9 +66,6 @@ class MyWin(QWidget, Ui_Dialog):
         """
         self.followings = await get_followings()
         self.fl_dict = {i['uname']: i for i in self.followings}
-
-    def goto_homepage(self):
-        webbrowser.open(self.curr_homepage)
 
     @qasync.asyncSlot()
     async def show_info(self):
@@ -108,7 +112,7 @@ class MyWin(QWidget, Ui_Dialog):
 
     def load_fl_list(self, gname):
         """
-        加载关注的up的列表
+        通过self.followings加载关注的up的列表
         :param gname:
         :return:
         """
@@ -127,7 +131,10 @@ class MyWin(QWidget, Ui_Dialog):
             item.setText(i)
             self.gp_list.addItem(item)
 
-    def refresh_fl_list(self):
+    def refresh_fl_list(self, refresh=False):
+        if refresh:
+            self.reload_followings()
+        # 不涉及网络请求
         self.fl_list.disconnect()
         self.fl_list.clear()
         self.load_fl_list(self.gp_pick.currentText())
@@ -181,14 +188,6 @@ class MyWin(QWidget, Ui_Dialog):
             self.fl_dict.pop(i)
         self.refresh_fl_list()
 
-    # def _btn_classify2(self):
-    #     uids = [self.fl_dict[i]['mid'] for i in self.fl_selected]
-    #     groupids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
-    #     classify2(uids, groupids)
-    #     for uname in self.fl_selected:
-    #         self.followings[list(self.fl_dict).index(uname)]['tag'] = groupids
-    #         self.fl_dict[uname]['tag'] = groupids
-    #     self.refresh_fl_list()
 
     @qasync.asyncSlot()
     async def _btn_classify(self):
@@ -197,9 +196,8 @@ class MyWin(QWidget, Ui_Dialog):
         uids = [self.fl_dict[i]['mid'] for i in self.fl_selected]
         groupids = [self.gp_dict[i]['tagid'] for i in self.gp_selected]
         await classify(uids, groupids)
-        self.refresh_fl_list()
+        self.refresh_fl_list(refresh=True)
 
-    
     @qasync.Slot()
     async def _btn_delete_gp(self):
         self.get_gp_selected()
@@ -230,6 +228,7 @@ async def main(followings):
 
 if __name__ == '__main__':
     try:
+        
         followings = asyncio.run(get_followings())
         qasync.run(main(followings))
     except asyncio.exceptions.CancelledError:

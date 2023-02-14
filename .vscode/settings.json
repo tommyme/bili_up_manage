@@ -8,5 +8,9 @@
         "**/Thumbs.db": true,
         "**/__pycache__/**": true,
         "**/.ipynb_checkpoints/**": true,
-    }
+        "requirements.txt": true,
+        // "user_secret.pkl": true,
+        ".gitignore": true,
+    },
+    "python.analysis.typeCheckingMode": "basic"
 }

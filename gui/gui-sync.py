@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QListWidgetItem
-from untitled import Ui_Dialog
+from gui.untitled import Ui_Dialog
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 import sys
-from api import get_followings, get_groups, unfollow, del_group, new_group, classify, classify2
+from bili.api import get_followings, get_groups, unfollow, del_group, new_group, classify, classify2
 import asyncio
 import requests as r
 import webbrowser
